@@ -67,6 +67,7 @@ fun sendMessage(chatId: Int, text: String) {
 
 class TelegramBot(private val token: String) {
     private val controllers: List<Any> = findControllers()
+    private val commandMap: Map<String, suspend (Message) -> Unit> = registerAnnotations()
 
     private fun findControllers(): List<Any> {
         val controllerClasses = mutableListOf<Any>()
@@ -110,12 +111,45 @@ class TelegramBot(private val token: String) {
         return controllerClasses
     }
 
+    private fun registerAnnotations(): Map<String, suspend (Message) -> Unit> {
+        val commandMap = mutableMapOf<String, suspend (Message) -> Unit>()
+
+        for (controller in controllers) {
+            val methods = controller::class.java.declaredMethods
+            for (method in methods) {
+                val commandAnnotation = method.getAnnotation(Command::class.java)
+                if (commandAnnotation != null) {
+                    val command = commandAnnotation.value
+                    val action: suspend (Message) -> Unit = { message ->
+                        try {
+                            println("Invoking method: $method on controller: $controller")
+                            val result = method.invoke(controller, message, null)
+                            println("Method successfully invoked. Result: $result")
+                        } catch (e: Exception) {
+                            println("Error invoking method: $method on controller: $controller")
+                            e.printStackTrace()
+                        }
+                    }
+                    commandMap[command] = action
+                }
+            }
+        }
+
+        return commandMap
+    }
+
+
+
+
     suspend fun handleLongPolling() {
         var offset = 0
         while (true) {
             val updates = getUpdates(offset)
             for (update in updates) {
-                handleUpdate(update)
+                handleUpdate(
+                    update,
+                    commandMap
+                )
                 offset = update.update_id + 1
             }
         }
@@ -136,10 +170,11 @@ class TelegramBot(private val token: String) {
         updatesResponse.result // return is removed
     }
 
-    suspend fun handleUpdate(update: Update) {
-        println(controllers)
-        println(update)
-        // Process the update.
+    suspend fun handleUpdate(update: Update, commandMap: Map<String, suspend (Message) -> Unit>) {
+        val message = update.message
+        val command = "/start" // Replace with the actual command you're handling
+        val action = commandMap[command]
+        action?.invoke(message!!)
     }
 }
 

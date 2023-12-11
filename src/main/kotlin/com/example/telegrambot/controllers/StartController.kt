@@ -7,8 +7,9 @@ import com.example.telegrambot.sendMessage
 class StartController {
     @Command("/start")
      suspend fun start(message: Message) {
+        println("Hello, Kotlin!")
         sendMessage(message.chat.id, "Hello, what's your name?")
-    }
+     }
 
     @Command("/help")
     suspend fun help(message: Message) {

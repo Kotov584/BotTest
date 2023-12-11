@@ -8,5 +8,5 @@ class AnotherController {
     @Command("/another")
      suspend fun another(message: Message) {
         sendMessage(message.chat.id, "This is another command.")
-    }
+     }
 }
