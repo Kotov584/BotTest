@@ -8,11 +8,11 @@ import com.example.telegrambot.sendMessage
 class StartController : BaseController() {
     @Command("/start")
      suspend fun start(message: Message) {
-        sendMessage(message.chatId, "Hello, what's your name?")
+        sendMessage(message.chat.id, "Hello, what's your name?")
     }
 
     @Command("/help")
     suspend fun help(message: Message) {
-        sendMessage(message.chatId, "Hello, what's your name?")
+        sendMessage(message.chat.id, "Hello, what's your name?")
     }
 }

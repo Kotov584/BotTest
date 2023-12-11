@@ -8,6 +8,6 @@ import com.example.telegrambot.sendMessage
 class AnotherController : BaseController() {
     @Command("/another")
      suspend fun another(message: Message) {
-        sendMessage(message.chatId, "This is another command.")
+        sendMessage(message.chat.id, "This is another command.")
     }
 }
