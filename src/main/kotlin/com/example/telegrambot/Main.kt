@@ -4,6 +4,8 @@ import kotlinx.coroutines.runBlocking
 import org.reflections.Reflections
 import kotlin.reflect.KClass
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.declaredMemberFunctions
 
 data class Message(val chatId: Long, val text: String)
 
@@ -25,21 +27,16 @@ class TelegramBot(private val token: String) {
 
     private fun findControllers(): List<BaseController> {
         val controllers = mutableListOf<BaseController>()
+        val reflections = Reflections("com.example.telegrambot.controllers")
+        val controllerClasses = reflections.getSubTypesOf(BaseController::class.java)
 
-        try {
-            val controllerClasses = findClassesWithAnnotation(Command::class)
-            for (controllerClass in controllerClasses) {
-                println("Found controller class: $controllerClass")
-                val instance = controllerClass.createInstance()
-                controllers.add(instance as BaseController)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        for (controllerClass in controllerClasses) {
+            val instance = controllerClass.kotlin.createInstance()
+            controllers.add(instance as BaseController)
         }
 
         return controllers
     }
-
 
     private fun findClassesWithAnnotation(annotation: KClass<out Annotation>): List<KClass<*>> {
         val controllers = mutableListOf<KClass<*>>()
@@ -57,15 +54,22 @@ class TelegramBot(private val token: String) {
 
 
     suspend fun handleLongPolling(message: Message) {
-        // Handle long polling here
-        // ...
+        // Extract command from message
+        val command = message.text
 
-        // Dispatch commands to controllers
+        // Find the correct controller and method
         for (controller in controllers) {
-            // Your logic to dispatch commands to controllers
-            // For example, check the received command and call the appropriate method
-            controller.handleCommand(message)
+            for (method in controller::class.declaredMemberFunctions) {
+                val commandAnnotation = method.findAnnotation<Command>()
+                if (commandAnnotation != null && commandAnnotation.value == command && method.parameters.size == 2) {
+                    method.call(controller, message)
+                    return
+                }
+            }
         }
+
+        // If no matching controller and method were found, handle it as you see fit
+        println("No handler found for command: $command")
     }
 }
 
