@@ -1,17 +1,14 @@
 package com.example.telegrambot
 
 import kotlinx.coroutines.runBlocking
-import org.reflections.Reflections
-import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.full.createInstance
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.declaredMemberFunctions
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.URISyntaxException
 import java.net.URL
 
 @Serializable
@@ -58,50 +55,59 @@ data class Update(
 
 @Serializable
 data class GetUpdatesResponse(
-    val ok: Boolean, val result: List<Update>
+    val ok: Boolean,
+    val result: List<Update>
 )
 
 annotation class Command(val value: String)
-
-// Controller base class
-abstract class BaseController {
-    suspend fun handleCommand(message: Message) {
-        println(message)
-    }
-}
 
 fun sendMessage(chatId: Int, text: String) {
     println("Sending message to $chatId: $text")
 }
 
 class TelegramBot(private val token: String) {
-    private val controllers: List<BaseController> = findControllers()
+    private val controllers: List<Any> = findControllers()
 
-    private fun findControllers(): List<BaseController> {
-        val controllers = mutableListOf<BaseController>()
-        val reflections = Reflections("com.example.telegrambot.controllers")
-        val controllerClasses = reflections.getSubTypesOf(BaseController::class.java)
-
-        for (controllerClass in controllerClasses) {
-            val instance = controllerClass.kotlin.createInstance()
-            controllers.add(instance as BaseController)
-        }
-
-        return controllers
-    }
-
-    private fun findClassesWithAnnotation(annotation: KClass<out Annotation>): List<KClass<*>> {
-        val controllers = mutableListOf<KClass<*>>()
+    private fun findControllers(): List<Any> {
+        val controllerClasses = mutableListOf<Any>()
         val packageName = "com.example.telegrambot.controllers"
 
-        val reflections = Reflections(packageName)
-        val annotated = reflections.getTypesAnnotatedWith(annotation.java)
+        try {
+            val classLoader: ClassLoader = Thread.currentThread().contextClassLoader
+            val packagePath = packageName.replace(".", "/")
+            val resources = classLoader.getResources(packagePath)
 
-        for (clazz in annotated) {
-            controllers.add(clazz.kotlin)
+            while (resources.hasMoreElements()) {
+                val url = resources.nextElement()
+                val file = File(url.toURI())
+                if (file.isDirectory) {
+                    val classNames = file.listFiles { _, name -> name.endsWith(".class") }
+                        ?.map { it.nameWithoutExtension }
+                        ?: emptyList()
+
+                    for (className in classNames) {
+                        val fullClassName = "$packageName.$className"
+                        try {
+                            val clazz = Class.forName(fullClassName)
+                            if (Any::class.java.isAssignableFrom(clazz)) {
+                                val controller = clazz.getDeclaredConstructor().newInstance()
+                                controllerClasses.add(controller)
+                            }
+                        } catch (e: ClassNotFoundException) {
+                            e.printStackTrace()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } catch (e: URISyntaxException) {
+            e.printStackTrace()
         }
 
-        return controllers
+        return controllerClasses
     }
 
     suspend fun handleLongPolling() {
@@ -131,6 +137,7 @@ class TelegramBot(private val token: String) {
     }
 
     suspend fun handleUpdate(update: Update) {
+        println(controllers)
         println(update)
         // Process the update.
     }
