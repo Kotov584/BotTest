@@ -3,6 +3,7 @@ package com.example.telegrambot
 import kotlinx.coroutines.runBlocking
 import org.reflections.Reflections
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.declaredMemberFunctions
@@ -52,24 +53,25 @@ class TelegramBot(private val token: String) {
         return controllers
     }
 
-
     suspend fun handleLongPolling(message: Message) {
-        // Extract command from message
-        val command = message.text
+        val text = message.text
 
-        // Find the correct controller and method
         for (controller in controllers) {
             for (method in controller::class.declaredMemberFunctions) {
-                val commandAnnotation = method.findAnnotation<Command>()
-                if (commandAnnotation != null && commandAnnotation.value == command && method.parameters.size == 2) {
-                    method.call(controller, message)
+                val annotationValue = method.findAnnotation<Command>()
+                if (annotationValue?.value == text) {
+                    val kFunction = method as? KFunction<*>
+                    kFunction?.call(controller, 123123, message)
+                    //(method as KFunction<SuspendFunction1<*, *>>).callSuspend(controller, message)
+                    println(controller)
+                    println(method)
+                    println(annotationValue.value)
                     return
                 }
             }
         }
 
-        // If no matching controller and method were found, handle it as you see fit
-        println("No handler found for command: $command")
+        println("No handler found for command: $text")
     }
 }
 

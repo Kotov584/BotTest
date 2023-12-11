@@ -10,4 +10,9 @@ class StartController : BaseController() {
      suspend fun start(message: Message) {
         sendMessage(message.chatId, "Hello, what's your name?")
     }
+
+    @Command("/help")
+    suspend fun help(message: Message) {
+        sendMessage(message.chatId, "Hello, what's your name?")
+    }
 }
