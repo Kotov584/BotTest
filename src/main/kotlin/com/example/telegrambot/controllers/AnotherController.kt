@@ -10,4 +10,4 @@ class AnotherController : BaseController() {
      suspend fun another(message: Message) {
         sendMessage(message.chatId, "This is another command.")
     }
-}
+} 
