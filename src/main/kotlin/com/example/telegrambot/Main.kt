@@ -10,6 +10,8 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URISyntaxException
 import java.net.URL
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Serializable
 data class Message(
@@ -62,7 +64,29 @@ data class GetUpdatesResponse(
 annotation class Command(val value: String)
 
 fun sendMessage(chatId: Int, text: String) {
-    println("Sending message to $chatId: $text")
+    val urlString = "https://api.telegram.org/bot5367105785:AAES4Om_H-twvhK3RbKDT_YXlF985us2CpA/sendMessage"
+    val url = URL(urlString)
+    val connection = url.openConnection() as HttpURLConnection
+    connection.requestMethod = "POST"
+    connection.doOutput = true
+
+    val postData = "chat_id=$chatId&text=${URLEncoder.encode(text, "UTF-8")}"
+    val postDataBytes = postData.toByteArray(StandardCharsets.UTF_8)
+
+    connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+    connection.setRequestProperty("Content-Length", postDataBytes.size.toString())
+    connection.outputStream.write(postDataBytes)
+
+    val responseCode = connection.responseCode
+    if (responseCode == HttpURLConnection.HTTP_OK) {
+        // Message sent successfully
+        println("Message sent successfully")
+    } else {
+        // Handle error response
+        println("Failed to send message. Response code: $responseCode")
+    }
+
+    connection.disconnect()
 }
 
 class TelegramBot(private val token: String) {
@@ -137,9 +161,6 @@ class TelegramBot(private val token: String) {
 
         return commandMap
     }
-
-
-
 
     suspend fun handleLongPolling() {
         var offset = 0
